@@ -7,21 +7,11 @@ use esp_backtrace as _;
 use hal::{clock::ClockControl, peripherals::Peripherals, prelude::*, Delay, IO};
 use dht_sensor::dht11;
 use dht_sensor::DhtReading;
+use hal_exp::ets_delay::EtsDelay;
 
-#[global_allocator]
-static ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
-
-fn init_heap() {
-    const HEAP_SIZE: usize = 32 * 1024;
-    static mut HEAP: MaybeUninit<[u8; HEAP_SIZE]> = MaybeUninit::uninit();
-
-    unsafe {
-        ALLOCATOR.init(HEAP.as_mut_ptr() as *mut u8, HEAP_SIZE);
-    }
-}
 #[entry]
 fn main() -> ! {
-    init_heap();
+    hal_exp::util::init_heap();
     let peripherals = Peripherals::take();
     let system = peripherals.SYSTEM.split();
 
@@ -36,12 +26,13 @@ fn main() -> ! {
     esp_println::logger::init_logger_from_env();
     log::info!("Hello world!");
     let mut count = 0u32;
+    let mut ets_delay = EtsDelay;
 
     loop {
         log::info!("Loop... {}", count);
         count += 1;
 
-        match dht11::Reading::read(&mut delay, &mut dht11_pin) {
+        match dht11::Reading::read(&mut ets_delay, &mut dht11_pin) {
             Ok(reading) => {
                 log::info!("readings: {:?}", reading)
             }

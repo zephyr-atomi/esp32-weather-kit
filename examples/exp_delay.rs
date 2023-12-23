@@ -30,34 +30,29 @@ fn main() -> ! {
     info!("clocks: {:?}", clocks.cpu_clock);
 
     let mut ets_delay = EtsDelay;
-
-    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led = io.pins.gpio8.into_push_pull_output();
-
-    let sys_timer = SystemTimer::new(peripherals.SYSTIMER);
-    info!("SYSTIMER Current value = {}", SystemTimer::now());
-
-    let dht11_pin = io.pins.gpio9.into_open_drain_output();
-    let mut dht11 = dht11::Dht11::new(dht11_pin);
-
-    log::info!("Hello world!");
-    let mut count = 0u32;
-
-    let mut last_ts = 0u64;
-    loop {
-        clocks.xtal_clock.raw();
-        let now = SystemTimer::now() - last_ts;
-        // info!("Loop... {}, time: {}, delta: {}", count, now, now - last_ts);
-        count += 1;
-        last_ts = now;
-        //
-        let t = dht11.perform_measurement(&mut ets_delay);
-        log::info!("measurements: {:?}", t);
-
-        led.set_high().unwrap();
-        delay.delay_ms(500u32);
-
-        led.set_low().unwrap();
-        delay.delay_ms(500u32);
+    let start_time = SystemTimer::now();
+    for _ in 0..10000 {
+        delay.delay_us(1u16);
     }
+    let end_time = SystemTimer::now();
+    let delay_duration = end_time - start_time;
+    info!("Delay duration: {}", delay_duration);
+
+    let start_time = SystemTimer::now();
+    for _ in 0..10000 {
+        ets_delay.delay_us(1u16);
+    }
+    let end_time = SystemTimer::now();
+    let ets_delay_duration = end_time - start_time;
+    info!("EtsDelay duration: {}", ets_delay_duration);
+
+    let start_time = SystemTimer::now();
+    ets_delay.delay_us(10000u16);
+    let end_time = SystemTimer::now();
+    let ets_delay_duration = end_time - start_time;
+    info!("2 EtsDelay duration: {}", ets_delay_duration);
+
+    // 输出两种延迟的总时长
+
+    loop {}
 }

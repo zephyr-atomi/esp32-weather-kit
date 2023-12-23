@@ -11,7 +11,7 @@ use core::cell::RefCell;
 use critical_section::Mutex;
 use hal::{
     clock::ClockControl,
-    gpio::{Event, Gpio2, Input, PullDown, IO},
+    gpio::{Event, Gpio9, Input, PullDown, IO},
     interrupt,
     peripherals::{self, Peripherals},
     prelude::*,
@@ -25,21 +25,21 @@ use heapless::Vec;
 use esp_hal_common::systimer::SystemTimer;
 
 const QUEUE_SIZE: usize = 100;
-static BUTTON: Mutex<RefCell<Option<Gpio2<Output<OpenDrain>>>>> = Mutex::new(RefCell::new(None));
+static BUTTON: Mutex<RefCell<Option<Gpio9<Output<OpenDrain>>>>> = Mutex::new(RefCell::new(None));
 static TIMESTAMP_QUEUE: Mutex<RefCell<Queue<u64, QUEUE_SIZE>>> = Mutex::new(RefCell::new(Queue::new()));
 
 #[entry]
 fn main() -> ! {
     let peripherals = Peripherals::take();
     let system = peripherals.SYSTEM.split();
-    let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
+    let clocks = ClockControl::max(system.clock_control).freeze();
 
     // Set GPIO5 as an output
     let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
     let mut led = io.pins.gpio8.into_push_pull_output();
 
     // Set GPIO9 as an input
-    let mut button = io.pins.gpio2.into_open_drain_output();
+    let mut button = io.pins.gpio9.into_open_drain_output();
     button.listen(Event::AnyEdge);
 
     critical_section::with(|cs| BUTTON.borrow_ref_mut(cs).replace(button));

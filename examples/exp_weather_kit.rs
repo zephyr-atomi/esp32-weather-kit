@@ -32,11 +32,13 @@ use hal::{
 use esp_backtrace as _;
 use nb::block;
 use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
-use log::info;
+use log::{error, info};
 use hal_exp::bh1750::{BH1750, MeasurementTime, Resolution};
 use hal_exp::bmp180::{BMP180, Oversampling};
 use alloc::format;
 use hal_exp::shared_i2c::SharedI2cBus;
+
+const DEFAULT_HUMIDITY:u16 = 450;
 
 #[entry]
 fn main() -> ! {
@@ -84,6 +86,10 @@ fn main() -> ! {
 
     let mut bmp180 = BMP180::new(shared_i2c.clone(), delay).unwrap();
 
+    let dht11_pin = io.pins.gpio9.into_open_drain_output();
+    let mut dht11 = dht11::Dht11::new(dht11_pin);
+    let mut ets_delay = hal_exp::ets_delay::EtsDelay;
+
     // Start timer (5 second interval)
     timer0.start(5u64.secs());
     loop {
@@ -91,24 +97,40 @@ fn main() -> ! {
         let illuminance = bh1750.illuminance();
         let (temp, pressure) = bmp180.temperature_and_pressure(Oversampling::O1).unwrap();
 
-        log::info!("Temp: {:.2}C Pressure: {:.2}hPa", temp as f32 / 10.0, pressure as f32 / 100.0);
+        log::info!("Temp: {:.2}C Pressure: {:.2}kPa", temp as f32 / 10.0, pressure as f32 / 1000.0);
+
+        let humidity = match dht11.perform_measurement(&mut ets_delay) {
+            Ok(res) => res.humidity,
+            Err(err) => {
+                error!("DHT error: {:?}", err);
+                DEFAULT_HUMIDITY
+            }
+        };
 
         // Fill display bufffer with a centered text with two lines (and two text
         // styles)
         let t = display.bounding_box();
-        info!("box: {:?}", t);
         Text::with_alignment(
-            format!("Temp: {:.2}C", temp as f32 / 10.0).as_str(),
-            t.center() + Point::new(0, -5),
-            text_style_big,
+            format!("Humidity: {:.1}C", humidity as f32 / 10.0).as_str(),
+            t.center() + Point::new(0, -8),
+            text_style,
             Alignment::Center,
         )
             .draw(&mut display)
             .unwrap();
 
         Text::with_alignment(
-            format!("Pressure: {:.2}hPa", pressure as f32 / 100.0).as_str(),
-            t.center() + Point::new(0, 10),
+            format!("Temp: {:.2}C", temp as f32 / 10.0).as_str(),
+            t.center() + Point::new(0, 2),
+            text_style,
+            Alignment::Center,
+        )
+            .draw(&mut display)
+            .unwrap();
+
+        Text::with_alignment(
+            format!("Pressure: {:.2}atm", pressure as f32 / 101300.0).as_str(),
+            t.center() + Point::new(0, 12),
             text_style,
             Alignment::Center,
         )
@@ -117,7 +139,7 @@ fn main() -> ! {
 
         Text::with_alignment(
             format!("Illuminance: {:.2?}", illuminance.expect("")).as_str(),
-            t.center() + Point::new(0, 20),
+            t.center() + Point::new(0, 22),
             text_style,
             Alignment::Center,
         )
