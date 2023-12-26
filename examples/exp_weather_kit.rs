@@ -119,8 +119,9 @@ fn main() -> ! {
             .draw(&mut display)
             .unwrap();
 
+        let temp_c = temp as f32 / 10.0;
         Text::with_alignment(
-            format!("Temp: {:.2}C", temp as f32 / 10.0).as_str(),
+            format!("Temp: {:.1}C {:.1}F", temp_c, temp_c * 9.0 / 5.0 + 32.0).as_str(),
             t.center() + Point::new(0, 2),
             text_style,
             Alignment::Center,

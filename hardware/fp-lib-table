@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "FlashPCB_Sensors")(type "KiCad")(uri "/home/lamuguo/code/esp32/kicad/FlashPCB-KiCad-Lib/footprints/FlashPCB_Sensors.pretty")(options "")(descr ""))
+)
