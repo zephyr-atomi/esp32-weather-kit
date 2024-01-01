@@ -31,18 +31,13 @@ fn main() -> ! {
     let mut led = io.pins.gpio8.into_push_pull_output();
 
     esp_println::logger::init_logger_from_env();
-    let dir_pin = io.pins.gpio2.into_push_pull_output();
-    let step_pin = io.pins.gpio3.into_push_pull_output();
 
     info!("hello world 3");
-    let mut driver = MotorDriver::a4988(Delay::new(&clocks), dir_pin, step_pin, 200, 1, 100f32);
 
+    let mut t = false;
     loop {
-        driver.set_speed(100f32);
-        driver.set_direction(true);
-        driver.move_instant(20);
-        driver.set_direction(false);
-        driver.move_instant(10);
+        info!("Current: {}", t);
+        t = !t;
 
         led.set_high().unwrap();
         delay.delay_ms(500u32);

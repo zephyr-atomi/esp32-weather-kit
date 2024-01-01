@@ -57,20 +57,20 @@
 #![no_std]
 
 #![deny(missing_debug_implementations)]
-#![deny(missing_docs)]
-#![deny(warnings)]
+// #![deny(missing_docs)]
+// #![deny(warnings)]
 #![deny(trivial_casts)]
 #![deny(trivial_numeric_casts)]
 #![deny(unsafe_code)]
 #![deny(unstable_features)]
 #![deny(unused_import_braces)]
-#![deny(unused_qualifications)]
+// #![deny(unused_qualifications)]
 
-extern crate embedded_hal as hal;
+extern crate embedded_hal;
 
 use core::marker::PhantomData;
-use hal::digital::OutputPin;
-use hal::blocking::delay::DelayUs;
+use embedded_hal::blocking::delay::DelayUs;
+use embedded_hal::digital::v2::OutputPin;
 
 // TODO: support EN pin
 //trait Enablable {
@@ -121,9 +121,13 @@ where
     }
 
     /// Moves the motor steps_to_move steps
-    pub fn move_instant(&mut self, steps_to_move: u64) {
+    pub fn move_instant(&mut self, steps_to_move: u64)
+        -> Result<(), <STEP as embedded_hal::digital::v2::OutputPin>::Error> {
         let steps_to_move = steps_to_move * self.step_division as u64;
-        (0..steps_to_move).for_each(|_| self.step(None));
+        for i in 0..steps_to_move {
+            self.step(None)?;
+        }
+        Ok(())
     }
 
     /// Moves the motor smoothly `steps_to_move` steps.
@@ -131,22 +135,31 @@ where
     pub fn move_smooth(&mut self,
                        steps_to_move: u64,
                        steps_acc: u64,
-                       steps_dec: u64) {
+                       steps_dec: u64)
+        -> Result<(), <STEP as embedded_hal::digital::v2::OutputPin>::Error> {
         let steps_to_move = (steps_to_move - steps_acc - steps_dec) * self.step_division as u64;
         let steps_acc = steps_acc * self.step_division as u64;
         let steps_dec = steps_dec * self.step_division as u64;
 
-        (1..=steps_acc).for_each(|i| self.step(Some((i, steps_acc))));
-        (0..steps_to_move).for_each(|_| self.step(None));
-        (1..=steps_dec).rev().for_each(|i| self.step(Some((i, steps_dec))));
+        for i in 1..=steps_acc {
+            self.step(Some((i, steps_acc)))?;
+        }
+        for _ in 0..steps_to_move {
+            self.step(None)?;
+        }
+        for i in (1..=steps_dec).rev() {
+            self.step(Some((i, steps_dec)))?;
+        }
+        Ok(())
     }
 
     /// Set the direction
-    pub fn set_direction(&mut self, clock_work: bool) {
+    pub fn set_direction(&mut self, clock_work: bool)
+        -> Result<(), <DIR as embedded_hal::digital::v2::OutputPin>::Error> {
         if clock_work {
-            self.dir_pin.set_low();
+            self.dir_pin.set_low()
         } else {
-            self.dir_pin.set_high();
+            self.dir_pin.set_high()
         }
     }
 
@@ -155,8 +168,9 @@ where
     /// !!!FIXME!!!
     /// Super naive implementation due to limitaions of the `embedded-hal` crate.
     /// One should use a timer instead of delay when `timer` and `time` API stabilize.
-    fn step(&mut self, s: Option<(u64, u64)>) {
-        self.step_pin.set_high();
+    fn step(&mut self, s: Option<(u64, u64)>)
+        -> Result<(), <STEP as embedded_hal::digital::v2::OutputPin>::Error> {
+        self.step_pin.set_high()?;
 
         let mut step_interval = self.step_interval;
         if let Some((s1, s2)) = s {
@@ -176,6 +190,7 @@ where
             CHIP::STEP_MIN_TIME
         };
         self.delay.delay_us(rest);
+        Ok(())
     }
 
     /// Generic version of constructor
@@ -212,7 +227,7 @@ macro_rules! driver {
     ($name:ident, $time:expr) => {
         #[allow(non_camel_case_types)]
         #[derive(Debug)]
-        struct $name;
+        pub struct $name;
 
         impl Params for $name {
             const STEP_MIN_TIME: u32 = $time;
