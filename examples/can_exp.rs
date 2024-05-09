@@ -12,7 +12,7 @@ use stepper_driver::MotorDriver;
 use esp_hal_common::{gpio, twai};
 use esp_hal_common::prelude::nb::block;
 use esp_hal_common::twai::filter::{Filter, SingleStandardFilter};
-use esp_hal_common::twai::TimingConfig;
+use esp_hal_common::twai::{BaudRate, TimingConfig};
 use esp_println::logger::init_logger;
 use esp_println::println;
 
@@ -28,8 +28,8 @@ fn main() -> ! {
     let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
 
     // Set the tx pin as open drain. Skip this if using transceivers.
-    let can_tx_pin = io.pins.gpio1.into_open_drain_output();
-    let can_rx_pin = io.pins.gpio0;
+    let can_tx_pin = io.pins.gpio5;
+    let can_rx_pin = io.pins.gpio4;
 
     // The speed of the CAN bus. (10Kbps)
     const CAN_BAUDRATE: twai::BaudRate = twai::BaudRate::Custom(TimingConfig {
@@ -40,6 +40,9 @@ fn main() -> ! {
         triple_sample: false,
     });
 
+
+    // IMPORTANT: Please don't use GPIO 1 for RX, due to issue here:
+    // https://github.com/esp-rs/esp-hal/issues/1207
 
     // Begin configuring the TWAI peripheral. The peripheral is in a reset like
     // state that prevents transmission but allows configuration.
